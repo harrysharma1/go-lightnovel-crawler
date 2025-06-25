@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/net/html"
 )
 
@@ -55,14 +56,35 @@ func traverse_nodes(urlPrefix string, node *html.Node) []string {
 	return links
 }
 
-func store() {
+func store(data []crawledData) {
 	const file = "crawledData.db"
+	const query = `
+		CREATE TABLE IF NOT EXISTS crawler(
+			id INTEGER NOT NULL PRIMARY KEY,
+			url TEXT,
+			html TEXT 
+		)
+	`
 	db, err := sql.Open("sqlite3", file)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Print(db)
 
+	result, err := db.Exec(query)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("result: %v\n", result)
+	for i := range data {
+		d := data[i]
+		url := d.url
+		html := d.textBasedHTMl
+		result, err := db.Exec("INSERT INTO crawler VALUES(NULL,?,?)", url, html)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("result: %v\n", result)
+	}
 }
 
 func crawler(rawURL string) {
@@ -84,5 +106,5 @@ func crawler(rawURL string) {
 
 		data = append(data, crawledData{url: hrefs[i], textBasedHTMl: string(htmlBody), parserBasedHTML: doc})
 	}
-	store()
+	store(data)
 }
